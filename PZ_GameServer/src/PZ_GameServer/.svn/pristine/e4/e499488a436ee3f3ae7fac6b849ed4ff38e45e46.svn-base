@@ -1,0 +1,50 @@
+package error
+
+//文件作用:错误定义
+
+import "PZ_GameServer/protocol/pb"
+
+var (
+	ErrHasLoginOtherDevice       = &mjgame.ErrorItem{99, "您的账号已在其它设备登录"}
+	ErrInvalidParam              = &mjgame.ErrorItem{100, "参数错误"}
+	ErrNotLogin                  = &mjgame.ErrorItem{101, "用户SID不正确, 请重新登录"}
+	ErrNeedLogin                 = &mjgame.ErrorItem{102, "请重新登录"}
+	ErrRoomNotExist              = &mjgame.ErrorItem{103, "该房间已关闭，请试试其它房间"}
+	ErrSelfNotInRoom             = &mjgame.ErrorItem{104, "当前不在房间中"}
+	ErrAutoIntoRoomFailed        = &mjgame.ErrorItem{105, "自动进入房间失败"}
+	ErrPlayHasNotEnoughGold      = &mjgame.ErrorItem{106, "有玩家金币不足"}
+	ErrPlayersHasFull            = &mjgame.ErrorItem{107, "玩家人数已满"}
+	ErrHasNotTurnPlay            = &mjgame.ErrorItem{108, "还没轮到出牌"}
+	ErrCardNotExist              = &mjgame.ErrorItem{109, "没有这张牌或玩家错误"}
+	ErrCardCanNotKong            = &mjgame.ErrorItem{110, "不能杠"}
+	ErrCardCanNotPeng            = &mjgame.ErrorItem{111, "不能碰"}
+	ErrCardNotHu                 = &mjgame.ErrorItem{112, "没有胡"}
+	ErrOpenIdNotEmpty            = &mjgame.ErrorItem{113, "openid不能为空"}
+	ErrQuery                     = &mjgame.ErrorItem{114, "查询出错"}
+	ErrCanNotDisband             = &mjgame.ErrorItem{115, "游戏未开始，不能解散"}
+	ErrCanNotStandUp             = &mjgame.ErrorItem{116, "游戏过程中不能离开座位"}
+	ErrHasNoRightsToKickUser     = &mjgame.ErrorItem{117, "您当前没有权利踢掉玩家"}
+	ErrCreateRoom                = &mjgame.ErrorItem{200, "创建房间失败"}
+	ErrCurSeatHasUsed            = &mjgame.ErrorItem{201, "当前位置已被占用，请重新选择位置"}
+	ErrSomePeopleNotReady        = &mjgame.ErrorItem{202, "有玩家未准备好，请准备"}
+	ErrStandUserCanNotChat       = &mjgame.ErrorItem{203, "围观用户禁止发言"}
+	ErrCurRoundHasOver           = &mjgame.ErrorItem{204, "当前局已结束"}
+	ErrDiamondNotEnough          = &mjgame.ErrorItem{205, "钻石不足，请充值"}
+	ErrGameHasRunning            = &mjgame.ErrorItem{206, "请游戏结束后再退出"}
+	ErrSomeOneHasDisbanding      = &mjgame.ErrorItem{207, "当前局已经有人发起解散"}
+	ErrWatchUserCannotDisbanding = &mjgame.ErrorItem{208, "围观用户不能发起解散或投票"}
+	ErrHasAlreadyVoted           = &mjgame.ErrorItem{209, "你已经投过票"}
+	ErrPlayHasNotEnoughDiamond   = &mjgame.ErrorItem{210, "玩家钻石不足"}
+	ErrPlayHasNotEnoughCondition = &mjgame.ErrorItem{220, "玩家条件不足"}
+	ErrUserStatePlaying          = &mjgame.ErrorItem{230, "玩家正在游戏中或状态错误"}
+	ErrInvalidOpenId             = &mjgame.ErrorItem{240, "OpenID错误"}
+	ErrMessageIntervalTooShort   = &mjgame.ErrorItem{250, "消息间隔太短"}
+	ErrMessageIsRun              = &mjgame.ErrorItem{260, "游戏已经开始"}
+	ErrMessageNotRun             = &mjgame.ErrorItem{270, "游戏没有开始"}
+	ErrMessageIsEnd              = &mjgame.ErrorItem{280, "游戏已经结束"}
+	ErrMessageIsNotGift          = &mjgame.ErrorItem{290, "不存在此种礼物"}
+	ErrMessageError              = &mjgame.ErrorItem{300, "消息错误"}
+	ErrMessageServerRepairs      = &mjgame.ErrorItem{310, "服务器正在维护"}
+	ErrInvalidChow               = &mjgame.ErrorItem{320, "吃的牌消息错误"}
+	ErrInvalidReq                = &mjgame.ErrorItem{330, "你的请求太多了"}
+)

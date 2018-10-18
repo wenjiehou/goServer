@@ -1,0 +1,62 @@
+package model
+
+import (
+	"time"
+)
+
+type Room struct {
+	ID        uint `gorm:"primary_key"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt *time.Time `sql:"index"`
+
+	UserID       int    `json:"user_id" sql:"index"`
+	Type         int    `json:"type"`
+	Rules        string `json:"rules"`
+	ServerRoomID int    `json:"server_room_id"`
+	UniqueCode   string `json:"unique_code" sql:"unique"`
+
+	User User `json:"user" gorm:"ForeignKey:UserID"`
+}
+
+type RoomModel struct {
+	CommonModel
+}
+
+func GetRoomModel() *RoomModel {
+	return &RoomModel{CommonModel{db: commonDb}}
+}
+
+func (r *RoomModel) Create(room *Room) error {
+	if err := r.db.Model(&Room{}).Create(room).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *RoomModel) Query(ids []int, roomType int32) ([]Room, error) {
+	var rooms []Room
+	if err := r.db.Model(&Room{}).Preload("User").
+		Where("id in (?) and type = ? and created_at > date_sub(now(),interval 7 day)", ids, roomType).
+		Order("id desc").Find(&rooms).Error; err != nil {
+		return nil, err
+	}
+
+	return rooms, nil
+}
+
+func (r *RoomModel) GetRoomById(id int32) (*Room, error) {
+	var room Room
+	if err := r.db.Model(&Room{}).Where("id=?", id).Find(&room).Error; err != nil {
+		return nil, err
+	}
+	return &room, nil
+}
+
+func (r *RoomModel) GetRoomByUniqueCode(code string) (*Room, error) {
+	var room Room
+	if err := r.db.Model(&Room{}).Preload("User").Where("unique_code=?", code).Find(&room).Error; err != nil {
+		return nil, err
+	}
+	return &room, nil
+}

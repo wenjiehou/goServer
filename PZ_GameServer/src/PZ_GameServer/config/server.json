@@ -1,0 +1,43 @@
+{
+	"ID" : 1,
+	"Debug":true,
+	"LogLevel": "debug",
+	"LogPath": "log/",
+	"LogOutput" : true,
+	"WSAddr": "192.168.188.205:8081",
+	"MaxConnNum": 20000,
+	"MaxRoomNum": 500,
+	"LenStackBuf": 10240,
+	"DBAddr" :   "127.0.0.1:9090",
+	"DB_Token" : "",
+	"TimeOut": 3,
+
+	"Db":{
+		"Type": "MySql",
+		"Ip" : "127.0.0.1",
+		"Port" : 3306,
+		"User" : "root",
+		"Pwd" : "",
+		"TimeOut" : 3,
+		"MaxConnect" : 100,
+		"MaxIdle" : 100,
+		"Name" : "pzmj",
+		"Charset" : "utf8mb4",
+		"Debug": false
+	},
+	"Redis":{
+		"Type": "Redis",
+		"Ip" : "127.0.0.1",
+		"Port" : 6379,
+		"User" : "",
+		"Pwd" : "",
+		"TimeOut" : 3,
+		"MaxIdle": 1000,
+		"MaxActive":1000,
+		"Charset" : "utf8mb4"
+	},
+	"GMHttp":{
+		"Ip":"192.168.188.205", 
+		"Port":5564
+	}
+}

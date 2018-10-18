@@ -1,0 +1,235 @@
+package room
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"strconv"
+	"sync"
+	"time"
+
+	"PZ_GameServer/common/util"
+	"PZ_GameServer/protocol/pb"
+	"PZ_GameServer/server/game/room/ningbo"
+	"PZ_GameServer/server/game/room/xiangshan"
+	"PZ_GameServer/server/game/room/xizhou"
+	"PZ_GameServer/server/game/roombase"
+	"PZ_GameServer/server/user"
+)
+
+// 房间结构
+type RoomHandle struct {
+	RoomId     int         //
+	Room       interface{} // 房间实例
+	CreateTime int64       // 创建时间
+	GameType   int         // 房间类型
+}
+
+var (
+	RoomList    = make(map[int]*RoomHandle)          // 房间
+	RoomDefInfo = make(map[int32]*roombase.RoomRule) // 房间默认规则
+	mutex       sync.RWMutex
+	Config      = make(map[string]map[string]string)
+)
+
+const (
+	XiZhou    = int32(mjgame.MsgID_GTYPE_ZheJiang_XiZhou)
+	XiangShan = int32(mjgame.MsgID_GTYPE_ZheJiang_XiangShan)
+	NingBo    = int32(mjgame.MsgID_GTYPE_ZheJiang_NingBo)
+	ZhenHai   = int32(mjgame.MsgID_GTYPE_ZheJiang_ZhenHai)
+	BeiLun    = int32(mjgame.MsgID_GTYPE_ZheJiang_Beilun)
+)
+
+func LoadConfig(path string) error {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	//UTF-8 text string with a Byte Order Mark (BOM). The BOM identifies that the text is UTF-8 encoded,
+	// but it should be removed before decoding
+	data = bytes.TrimPrefix(data, []byte("\xef\xbb\xbf"))
+	err = json.Unmarshal(data, &Config)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// 初始化注册游戏类型
+func InitGames() {
+	RoomDefInfo[XiZhou] = &xizhou.XiZhou_RoomRule
+	RoomDefInfo[XiangShan] = &xiangshan.XiangShan_RoomRule
+	RoomDefInfo[NingBo] = &ningbo.NingBo_RoomRule
+	XueLiu_Init() // 血流
+	go WatchRoom()
+}
+
+// 创建房间
+func CreateRoom(roomId int, croom *mjgame.Create_Room, user *user.User) *RoomHandle {
+	_, ok := RoomDefInfo[croom.Type]
+	if !ok {
+		return nil // 没有这种房间类型
+	}
+
+	// 创建房间
+	room := GetNewRoom(roomId, croom.Type, user, croom.Rule)
+
+	mutex.Lock()
+	defer mutex.Unlock()
+	RoomList[roomId] = &RoomHandle{
+		RoomId:     roomId,
+		Room:       room,
+		CreateTime: time.Now().Unix(),
+		GameType:   int(croom.Type),
+	}
+
+	return RoomList[roomId]
+}
+
+// 得到房间
+func GetNewRoom(rid int, t int32, user *user.User, rules []int32) interface{} {
+	var v interface{} = int64(0)
+
+	key := strconv.Itoa(int(t))
+
+	switch mjgame.MsgID(t) {
+	case mjgame.MsgID_GTYPE_ZheJiang_XiZhou: // 西周
+		room := xizhou.RoomXiZhou{}
+		xizhou.XiZhou_RoomRule.Rules = rules
+		room.Rules = xizhou.XiZhou_RoomRule
+		room.RoomBase.InitRoomRule(rules, Config[key])
+		room.Create(rid, t, user, &room.Rules)
+		return &room
+	case mjgame.MsgID_GTYPE_SiChuan_XueLiu: // 血流
+		room := RoomXueLiu{}
+		room.Rules = XueLiu_RoomRule
+		room.Create(rid, t, user, &room.Rules)
+		return &room
+	case mjgame.MsgID_GTYPE_ZheJiang_XiangShan: // 象山
+		room := xiangshan.RoomXiangshan{}
+		xiangshan.XiangShan_RoomRule.Rules = rules
+		room.Rules = xiangshan.XiangShan_RoomRule
+		room.RoomBase.InitRoomRule(rules, Config[key])
+		room.Create(rid, t, user, &room.Rules)
+		return &room
+	case mjgame.MsgID_GTYPE_ZheJiang_NingBo:
+		room := ningbo.RoomNingBo{}
+		ningbo.NingBo_RoomRule.Rules = rules
+		room.Rules = ningbo.NingBo_RoomRule
+		room.RoomBase.InitRoomRule(rules, Config[key])
+		room.Create(rid, t, user, &room.Rules)
+		return &room
+	}
+	return v
+}
+
+// 查询规则存在
+func CheckRule(rule int, pRule *[]int) bool {
+	for _, v := range *pRule {
+		if v == rule {
+			return true
+		}
+	}
+	return false
+}
+
+//
+func WatchRoom() {
+	for {
+		select {
+		case roomId := <-roombase.ChanRoom:
+			go func() {
+				time.Sleep(1 * time.Second)
+				mutex.Lock()
+				delete(RoomList, roomId)
+				roombase.Redis_RemovePlayingUser(roomId)
+				roombase.Redis_RemoveRoom(roomId)
+				fmt.Println("Room delete ", roomId, RoomList[roomId])
+				mutex.Unlock()
+			}()
+			//			mutex.Lock()
+			//			delete(RoomList, roomId)
+			//			roombase.Redis_RemovePlayingUser(roomId)
+			//			roombase.Redis_RemoveRoom(roomId)
+			//			fmt.Println("Room delete ", roomId, RoomList[roomId])
+			//			mutex.Unlock()
+
+		}
+	}
+}
+
+//@andy新房间ID
+func NewRoomId() int {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	roomId := 0
+	total := len(RoomList)
+	var tempTime int64
+	if total > 0 {
+		for _, v := range RoomList {
+			if tempTime < v.CreateTime {
+				tempTime = v.CreateTime
+				roomId = v.RoomId
+			}
+		}
+	}
+
+	return roomId
+}
+
+//@andy获取房间
+func GetLockRoomHandle(roomId int) (*RoomHandle, bool) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	room, ok := RoomList[roomId]
+	return room, ok
+}
+
+//@andy创建房间
+func CreateLockRoom(croom *mjgame.Create_Room, user *user.User, rid int) (*RoomHandle, int) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	var roomId = rid
+	if rid <= 0 {
+		for {
+			roomId = GetNewRoomID()
+			_, haved := RoomList[roomId]
+			if !haved {
+				break
+			}
+		}
+	}
+	_, ok := RoomDefInfo[croom.Type]
+	if !ok {
+		return nil, -1 // 没有这种房间类型
+	}
+
+	// 创建房间
+	room := GetNewRoom(roomId, croom.Type, user, croom.Rule)
+
+	RoomList[roomId] = &RoomHandle{
+		RoomId:     roomId,
+		Room:       room,
+		CreateTime: time.Now().Unix(),
+		GameType:   int(croom.Type),
+	}
+
+	return RoomList[roomId], roomId
+}
+
+//获取新房间号
+func GetNewRoomID() int {
+	temp := strconv.Itoa(util.RandInt(1, 999999))
+	mlen := 6 - len(temp)
+
+	for i := 0; i < mlen; i++ {
+		temp += "0"
+	}
+	roomId, _ := strconv.Atoi(temp)
+	return roomId
+}

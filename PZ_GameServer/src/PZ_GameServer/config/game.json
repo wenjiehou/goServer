@@ -1,0 +1,9 @@
+{
+	"DiscardTimeOut": 15,  
+	"CheckTimeOut": 15,
+	"Change3CardTimeOut": 15,
+	"MissTypeTimeOut": 15,
+	"RoundNeedCoin" : 500,
+	"MaxRoom" : 10,
+	"RoomStartCount" : 1000
+}

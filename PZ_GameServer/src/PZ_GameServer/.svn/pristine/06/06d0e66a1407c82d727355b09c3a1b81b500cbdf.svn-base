@@ -1,0 +1,238 @@
+/*
+	玩法基类
+*/
+package roombase
+
+import (
+	//al "PZ_GameServer/common/util/arrayList"
+	"PZ_GameServer/protocol/pb"
+	"PZ_GameServer/server/user"
+	"reflect"
+	"sync"
+	"time"
+
+	"github.com/golang/protobuf/proto"
+)
+
+var (
+	ChanRoom = make(chan int, 1000) //销毁房间channel,传递房间id
+	Debug    bool
+)
+
+//座位基础信息
+type SeatBase struct {
+	UID             string        // 用户uid
+	Index           int           // (0-3) 座位顺序
+	Direct          int           // 方位(0-3) 东南西北
+	State           int           // 状态
+	IsReady         bool          // 是否准备
+	IsZhuang        bool          // 是否是庄家
+	IsCanWin        bool          //
+	IsCanPeng       bool          //
+	IsCanKong       bool          //
+	IsCanChow       bool          //
+	IsDefeat        bool          // 认输
+	Ting            int           // 是否听牌  >0  听牌
+	Disband         int           // -1未操作, 0=反对  1=同意
+	User            *user.User    // 用户
+	Cards           *UserCard     // 用户的所有牌(手牌, 出牌, 吃, 碰, 杠, 胡, 花)
+	CreateTimeStamp int64         // 当前用户坐下时间
+	Message         *Message      // 最后一条待处理消息(断线重连使用)
+	Accumulation    *Accumulation // 结算信息
+	LastCardID      int           // 最后一张操作的牌id(吃碰杠)
+	HuCardIDs       []int         // 处理过手胡 胡牌id
+	PengCardIDs     []int         // 处理过手碰 碰牌id
+	ChowCardIDs     []int         // 处理过手吃 吃牌id
+	OfflineTime     time.Time     // 掉线时间
+	IsTransfer      bool          // 是否已经换过花false:没有true:有
+	LastToolType    int           // 1:吃 2:碰 3:杠
+	IsPutCard       bool          //是否出过牌
+}
+
+type Message struct {
+	Id      mjgame.MsgID  //消息id
+	Content proto.Message //消息内容
+}
+
+type Accumulation struct {
+	Score     int32 //当前总分数
+	FireCount int32 //点炮次数
+	PayCount  int32 //赔付次数
+	WinCount  int32 //赢牌次数
+}
+
+// 参数
+type Param struct {
+	User *user.User
+	Seat int
+}
+
+// 房间规则
+type RoomRule struct {
+	GameType           int         // 游戏类型
+	Create_NeedDiamond int         // 创建房间需要的钻石(用于验证)
+	Play_NeedDiamond   int         // 开始玩需要的钻石(总数)(按支付方式扣费(Play_NeedDiamond/4))
+	SeatLen            int         // 座位数量  2, 3, 4
+	DefCardLen         int         // 默认手牌数量 13
+	AllCardLen         int         // 牌的数量
+	Card_W             int         // 默认带万 1代表一次
+	Card_B             int         // 默认带饼
+	Card_T             int         // 默认带条
+	Card_F             int         // 默认带风
+	Card_J             int         // 默认带箭 (中发白)
+	Card_H             int         // 默认带花
+	Card_Else          []int       // 特殊牌
+	CanLaiZi           int         // 赖子数量
+	CanPeng            int         // 可以碰
+	CanChow            int         // 可以吃
+	CanKong            int         // 可以直杠
+	CanAnKong          int         // 可以暗杠
+	CanPengKong        int         // 可以碰杠
+	CanTing            int         // 可以听
+	CanWin             int         // 可以直胡
+	CanZiMo            int         // 可以自摸胡
+	MaxWinCount        int         // 最大胡牌数量<0为不限次数, 大众麻将为1
+	MaxTime            int         // 最大时间(<=0 为不限时间)
+	MaxRound           int         // 最大局数(<=0 为不限局数)
+	BaseScore          int         // 基本分
+	MaxTai             int         // 封顶台数( 0没有限制 )
+	WinNeedTai         int         // 胡牌最小台数 (<=0 为不限)
+	Rules              []int32     // 全部规则(包含特殊规则)
+	PayType            int         // 支付方式, 1人付, 毎人付
+	LaiZi              []int       // 赖子(财神)
+	CanWatch           int         // 是否可以围观
+	Temp               interface{} // 模板
+}
+
+//************重播录制相关数据结构***********
+
+type PerRecords struct {
+	P int //-1表示所有人
+	C *map[mjgame.MsgID]interface{}
+}
+
+type RecordMgs struct {
+	Msgs []*PerRecords
+}
+
+//************重播录制相关数据结构***********
+
+// 房间基础信息
+type RoomBase struct {
+	IRoom
+
+	RoomId           int             // 房间号
+	DbRoomId         uint            // 数据库房间id
+	PWD              string          // 房间密码
+	CreateUserId     int             // 创建房间的用户 (房主)(根据PayType, 如果一人付,退出房间后依然是房主付)
+	CreateTime       int64           // 房间创建时间
+	Type             int32           // 类型(玩法类型) 类型详见 Proto文件
+	SubType          int32           //子类型 如宁波麻将 0:3百搭 1:4百搭 2:7百搭
+	Level            int             // 等级
+	State            int             // 状态机(去掉Chan控制, 用Int控制)
+	Rules            RoomRule        // 规则列表
+	ChanRoom         chan int        // 操作通道
+	RoundCount       int             // 当前局数
+	BigRoundCount    int             // 大圈数
+	StartTime        int             // 游戏开始时间
+	RoundTime        time.Time       // 当前局开始时间
+	TotalTime        int64           // 总计时间(从开局开始)
+	IsRun            bool            // 是否游戏已经开始, 游戏开始后一直到结束  两局之间为false, 结算时候为flash 用来判断是否可以站起
+	WinUserCount     int             // 点击胡牌的用户 (用来防止其他用户点碰杠吃,  一炮多响)
+	Dict             int             // 骰子
+	BankerIndex      int             // 庄家的位置
+	FirstZhuangIndex int             // 第一局庄的位置
+	CurIndex         int             // 当前轮到的玩家
+	CurToolIndex     int             // 当前等待操作玩家的Index
+	Seats            []*SeatBase     // 房间内座位
+	WatchSeats       []*user.User    // 观察者信息
+	AllCards         []Card          // 全部牌
+	TimeOutCB        reflect.Value   // 超时回调
+	TimeOutCBParam   []reflect.Value // 超时回调参数
+	WaitPutTimeOut   int             // 出牌超时时间
+	WaitToolTimeOut  int             // 操作超时时间
+	WaitTimeCount    int             // 等待计时时间
+	WaitOptTool      *RoomWaitOpts   // 等待操作,  如果该用户没有操作或者没有Pass则必须等待, 其他用户操作必须等待, 一炮多响必须等待全部操作
+	CurCard          *Card           // 当前出的牌(用于吃碰杠胡判断)
+	AllCardLength    int             // 全部牌的数量
+	CurMJIndex       int             // 当前拿牌的位置 (断线重连)
+	StartIndex       int             // 开始的牌的位置 (可以算出总共拿了多少张)
+	EndBlank         int             // 结尾拿掉的牌 (杠后从结尾拿掉的牌)
+	MToolChecker     ToolChecker     // 操作检查
+	StlCtrl          interface{}     // 记录结算
+	IsDraw           bool            // 是否平局
+	VoteTimeOut      int             //投票超时时间
+	LastPutIndex     int             //最后一个出牌用户索引
+	Show             bool            //最后出的牌有没有被操作(吃，碰，杠)  // Show=true 被碰了   Show=false 没有被碰
+	UniqueCode       string          //房间唯一性标识
+	StopTicker       bool            //退出timeTicker
+	MsgList          MsgQueue        //消息队列
+	StateMutex       sync.Mutex      //状态机互斥锁
+	RStateMutex      sync.RWMutex
+	RoomRecord       string     //房间消息记录
+	RoundTotaled     bool       //是否已经结算
+	Votes            []int      //投票
+	VoteStarter      int        //投票发起者
+	BattleRecord     *RecordMgs //回放数据
+	RoundToatlFinish bool       //是否结算已经完成
+	FanCard          *Card      //如果翻牌 翻出的牌的值
+}
+
+//type Vote struct {
+//	Index  int
+//	Result int
+//}
+
+// 房间基础接口
+type IRoom interface {
+	Create(rid int, t int32, uid string, rule *RoomRule)               // 创建房间
+	Init()                                                             // 初始化(数据重置) 			(1)
+	InitRandAllCard()                                                  // 初始化全部的随机牌 			(2)
+	InitUserCard()                                                     // 初始化用户牌(13张手牌) 		(3)
+	IntoUser(user *user.User)                                          // 进入房间
+	ExitUser(user *user.User)                                          // 退出房间
+	CheckCanStart() bool                                               // 是否可以开始游戏(判断玩家金币, 时间)
+	DingZhuang() int                                                   // 定庄(随机, 掷骰子)
+	DingSeat() []int                                                   // 定顺序(按先后顺序, 掷骰子)
+	DingStartCard() int                                                // 定抓牌顺序(掷骰子)
+	Start(user *user.User)                                             // 开始游戏(扣费)
+	Restart()                                                          // 重新开始游戏
+	Process()                                                          // 游戏过程
+	SendGameInfo()                                                     // 房间全部信息(断线重连, 新玩家进入)
+	TurnNextWaitTool()                                                 // 转到下一个等待操作的玩家
+	TurnNextPlayer(bGetCard bool, bForward bool)                       // 转到下一个出牌的玩家
+	StartWaitTool(card *Card)                                          // 开始等待操作
+	WaitStart()                                                        // 等待开始
+	WaitTool(timeout int)                                              // 等待操作
+	WaitPut(timeout int)                                               // 等待出牌
+	waitTimeOut(args Param)                                            // 等待超時
+	CheckWin()                                                         // 判断是否可以胡牌
+	CheckKong()                                                        // 判断是否可以杠牌
+	CheckPeng()                                                        // 判断是否可以碰牌
+	CheckChow()                                                        // 判断是否可以吃牌
+	CheckTing()                                                        // 判断是否可以听牌
+	CheckPass()                                                        // 判断是否可以过
+	AutoPutCard()                                                      // 自动出牌
+	AutoTool()                                                         // 自动操作
+	GetNextCard(bForward bool)                                         // 得到下一张牌
+	Ready(user *user.User)                                             // 单个玩家准备
+	PutCard()                                                          // 出牌
+	WinCard(user *user.User, cid int)                                  // 胡牌
+	KongCard(user *user.User, cid int)                                 // 杠牌
+	PengCard(user *user.User, cid int)                                 // 碰牌
+	ChowCard()                                                         // 吃牌
+	TingCard()                                                         // 听牌
+	Pass()                                                             // 过
+	Draw()                                                             // 流局
+	ToolTotal()                                                        // 每次操作后的结算
+	RoundTotal()                                                       // 一局结束最后结算
+	EndGameTotal()                                                     // 全部局结束后的结算
+	NextRound()                                                        // 下一局(一局结束)
+	NextBigRound()                                                     // 下一大圈(每人做一局庄)
+	Disband()                                                          // 解散房间
+	Vote()                                                             // 投票
+	UpdateScore(rScore []int)                                          // 更新用户分数
+	AddToolUser(uIndex int, iwin int, ikong int, ipeng int, ichow int) // 添加操作用户
+	AddMsgList(args ...interface{})                                    // 添加消息队列
+	NotifyTool()                                                       // 通知操作
+}

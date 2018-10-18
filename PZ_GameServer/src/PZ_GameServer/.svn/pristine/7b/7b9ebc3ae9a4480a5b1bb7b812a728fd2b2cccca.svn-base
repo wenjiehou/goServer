@@ -1,0 +1,237 @@
+package user
+
+import (
+	"fmt"
+	"reflect"
+	"strconv"
+
+	//"PZ_GameServer/common/util"
+	"PZ_GameServer/model"
+	"PZ_GameServer/net/network"
+	"PZ_GameServer/protocol/pb"
+	"PZ_GameServer/server/router"
+
+	"PZ_GameServer/protocol/def"
+	"time"
+
+	//"encoding/json"
+
+	derr "PZ_GameServer/server/game/error"
+
+	"github.com/golang/protobuf/proto"
+)
+
+type User struct {
+	*model.User
+	Conn              network.Conn  //
+	GameType          reflect.Type  // 目前玩的游戏类型(用于路由解析)
+	RunCall           RunParam      //
+	StopGameNoticeLog map[uint]bool //停服公告状态用于记录是否发送过
+	PreRMSGTime       int64
+	ConReadCount      int //连续小于0.1秒读取客户端数据次数，当次数大于5次，该链接为恶意攻击，将其断开连接
+}
+
+// 事件运行
+type RunParam struct {
+	IsRunning bool
+	StartTime int64
+	Room      interface{}
+	FunName   string
+	Fun       reflect.Value
+	Params    []reflect.Value
+}
+
+var (
+	ChanUser = make(chan User, 1)
+)
+
+// 参数
+type Param struct {
+	User  *User
+	Index int
+}
+
+func (u *User) Init() {
+	u.StopGameNoticeLog = make(map[uint]bool)
+}
+
+func (r *User) Try(fun func(), handler func(interface{})) {
+	defer func() {
+		if err := recover(); err != nil {
+			handler(err)
+		}
+	}()
+	fun()
+}
+
+//
+func (u *User) Run() {
+	u.Init()
+
+	for {
+		//u.Try(func() {
+
+		//		time.Sleep(time.Millisecond * 180)
+		data, err := u.Conn.ReadMsg()
+		if u.PreRMSGTime != 0 {
+			delay := time.Now().UnixNano() - u.PreRMSGTime
+
+			//fmt.Println("delay:::" + strconv.Itoa(int(delay)))
+			if delay < 100000000 { //0.2秒
+				u.ConReadCount++
+			} else {
+				u.ConReadCount = 0
+			}
+		}
+		if u.ConReadCount >= 10 {
+			fmt.Println("用户连续请求太多，直接断开")
+			u.SendMessage(mjgame.MsgID_MSG_ACK_Error, derr.ErrInvalidReq)
+			return
+		}
+
+		u.PreRMSGTime = time.Now().UnixNano()
+
+		if err != nil {
+			fmt.Println("用户断线 ", err)
+			break
+		}
+
+		//		}, func(e interface{}) {
+		//			fmt.Println("user read error ", e)
+		//			return
+		//		})
+
+		//计算时间差
+		//		if u.RunCall.StartTime > 0 {
+		//			vTime := time.Now().Unix()/1000000 - u.RunCall.StartTime
+		//			fmt.Println("vTime::" + strconv.Itoa(int(vTime)))
+		//			if vTime < 100 {
+		//				fmt.Println("间隔操作时间太短")
+		//				break
+		//			}
+		//		}
+
+		// 进行解码
+		message := &mjgame.Message{}
+		err = proto.Unmarshal(data, message)
+		if err != nil {
+			fmt.Println("消息错误", err)
+			return
+		}
+
+		msg, evt, _, err := router.GetCallInfo(message.ID, 0, &message.MSG)
+		if err != nil {
+			id := strconv.Itoa(int(message.ID))
+			fmt.Println("message信息错误" + id + string(message.MSG))
+			return
+		}
+		if msg != nil {
+			runCall := RunParam{}
+			runCall.Params = make([]reflect.Value, 2)
+			runCall.Params[0] = reflect.ValueOf(&message.MSG)
+			runCall.Params[1] = reflect.ValueOf(u) // 用户信息
+			runCall.StartTime = time.Now().Unix()
+			runCall.Fun = evt
+			//			var userID int
+			//			var roomID int
+			//			var userName string
+			//			if u.User != nil {
+			//				userID = u.User.ID
+			//				roomID = u.User.RoomId
+			//				userName = u.User.NickName
+			//			}
+			//fmt.Printf("[%v] uId=%d, %s, msg=%d, param=[%v] rid=%d \n", time.Now(), userID, userName, message.ID, msg, roomID)
+
+			u.Running(&runCall)
+
+		} else {
+			fmt.Println("no register message : ", string(data))
+		}
+
+	}
+
+}
+
+// 运行
+func (u *User) Running(rp *RunParam) {
+
+	//go func() {
+	rp.Fun.Call(rp.Params)
+	//}()
+}
+
+// 关闭
+func (u *User) OnClose() {
+	if u == nil || u.User == nil {
+		return
+	}
+	u.User.State = def.Offline
+	//	fmt.Println("wanjiaduankai")
+	//model.GetUserModel().Save(u.User)
+	ChanUser <- *u //通知玩家离开房间
+	//u = nil
+}
+
+// 获得IP地址
+func (u *User) GetIP() string {
+	ip := ""
+	//	if u != nil && u.Conn != nil {
+	//		ip = u.Conn.RemoteAddr().String()
+	//	}
+	return ip
+}
+
+//
+func (u *User) SendMessage(msgId mjgame.MsgID, pb proto.Message) {
+	if u.Conn == nil {
+		fmt.Println("fanhuile")
+		return
+	}
+
+	//	test, err := json.Marshal(pb)
+	//	if err == nil {
+
+	//		body := mjgame.MessageRecord{ID: int32(msgId), Body: string(test)}
+
+	//		record, e := json.Marshal(body)
+	//		if e == nil {
+	//			fmt.Println("shuju json::" + string(record))
+	//		}
+
+	//	}
+
+	ms, _ := proto.Marshal(pb)
+	m := mjgame.Message{ID: int32(msgId), MSG: ms}
+	data, err := proto.Marshal(&m)
+	if err != nil {
+		fmt.Println("marshaling message error: ", err)
+	}
+
+	//	temp := util.BytesToBinaryString(data)
+	//	data = util.BinaryStringToBytes(temp)
+
+	u.Conn.WriteMsg(data)
+	//fmt.Println("转化之后的::" + util.BytesToBinaryString(data))
+
+}
+
+func BCMessage(msgId mjgame.MsgID, pb proto.Message, users []*User) {
+	ms, _ := proto.Marshal(pb)
+	m := mjgame.Message{ID: int32(msgId), MSG: ms}
+	data, err := proto.Marshal(&m)
+	if err != nil {
+		fmt.Println("marshaling message error: ", err)
+	}
+	for _, user := range users {
+		if user.Conn != nil {
+			user.Conn.WriteMsg(data)
+		}
+	}
+}
+
+//
+func GetUser(conn *network.WSConn) *User {
+	u := User{}
+	u.Conn = conn
+	return &u
+}

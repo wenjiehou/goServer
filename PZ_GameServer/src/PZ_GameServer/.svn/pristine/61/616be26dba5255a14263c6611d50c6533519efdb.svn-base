@@ -1,0 +1,19 @@
+{
+  "curIndex":0,    
+  "siteIndex":3,
+  "direct":3, 
+  "feng":0,       
+  "list":[4,4,4,7],       
+  "chow":[10,11,12,21,22,23],       
+  "peng":[],       
+  "kong":[27,27,27,27],
+  "kongType":[1,1,1,1],       
+  "hua":[],        
+  "hu":7, 
+  "startIndex":0,
+  "curMJIndex":100, 
+  "endBlank ":0,   
+  "chengbao":[0,0,0,0],
+  "ting":1,       
+  "curCard":11 
+}

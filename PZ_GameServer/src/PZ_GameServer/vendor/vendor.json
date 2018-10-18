@@ -1,0 +1,154 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "psdXdlVcsV1TZsS+d1YC4ns2WCo=",
+			"path": "PZ_GameServer/src/base/conf",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "TAZ9qfiTHyk08y07Aa8pBXhBKS8=",
+			"path": "PZ_GameServer/src/base/logf",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "N1Fr3xiTkZCqSgGq2sJvKD11Yq8=",
+			"path": "PZ_GameServer/src/chanrpc",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "QT/B8gt15KV+C0T5LBtCTUmyqyw=",
+			"path": "PZ_GameServer/src/def",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "Be8j+G4XPf2/d9+3+Kcdha8W6H0=",
+			"path": "PZ_GameServer/src/game",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "3DkxX8/hR0wBhjC0jsvPCsjKIk4=",
+			"path": "PZ_GameServer/src/game/room",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "ID+G/pp2DLltLk7YzeVB7AuQxSY=",
+			"path": "PZ_GameServer/src/game/router",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "/iWjZ03YaKztPDQkflOLd+oPmog=",
+			"path": "PZ_GameServer/src/game/rule",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "5ZwKNV3nrokqX13pPq6anYhs0IM=",
+			"path": "PZ_GameServer/src/game/statement",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "xKSYK63l7FqRWsFnbCPr/DbMLrk=",
+			"path": "PZ_GameServer/src/msg",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "9yrhMWzSG8JGLhrQZWDtWpeC77g=",
+			"path": "PZ_GameServer/src/msg/mjgame",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "XrJ//ACF9HZC1WVsQjQOunyejOs=",
+			"path": "PZ_GameServer/src/network",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "HnnYGtgXfjAOEb6WbtoCrx/5z6M=",
+			"path": "PZ_GameServer/src/server",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "wI0F9JDIQHz3QkztQzF4oHgJJas=",
+			"path": "PZ_GameServer/src/util",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "yG5faHI/0Ghk3H/h5kIb92IpyXA=",
+			"path": "PZ_GameServer/src/util/arrayList",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "6X3O3mfvOyiwV2iAb5GjxARs08c=",
+			"path": "github.com/garyburd/redigo/internal",
+			"revision": "433969511232c397de61b1442f9fd49ec06ae9ba",
+			"revisionTime": "2017-05-10T23:06:39Z"
+		},
+		{
+			"checksumSHA1": "pag8jse/RuPT1bj4RDkhSYbeSk8=",
+			"path": "github.com/garyburd/redigo/redis",
+			"revision": "433969511232c397de61b1442f9fd49ec06ae9ba",
+			"revisionTime": "2017-05-10T23:06:39Z"
+		},
+		{
+			"checksumSHA1": "blZyJ896pCiBGuD5YJU5XXG95Ps=",
+			"path": "github.com/go-sql-driver/mysql",
+			"revision": "2e00b5cd70399450106cec6431c2e2ce3cae5034",
+			"revisionTime": "2016-12-24T12:10:19Z"
+		},
+		{
+			"checksumSHA1": "FhQtBYq3/nSeuhKzWoHw26fkzng=",
+			"path": "github.com/golang/protobuf/proto",
+			"revision": "2bba0603135d7d7f5cb73b2125beeda19c09f4ef",
+			"revisionTime": "2017-03-31T03:19:02Z"
+		},
+		{
+			"checksumSHA1": "bAAVsCpnGDOuSnMTtzP0nWgXENM=",
+			"path": "github.com/gorilla/websocket",
+			"revision": "0674c7c7968d9fac5f0f678325161ec31df406af",
+			"revisionTime": "2017-01-23T18:52:19Z"
+		},
+		{
+			"checksumSHA1": "9X+Gvw1aaoDugJq2E4Rr464BdUI=",
+			"path": "github.com/jinzhu/gorm",
+			"revision": "717654b31c3d51348cb305684369c20a8387154b",
+			"revisionTime": "2017-04-19T07:35:50Z"
+		},
+		{
+			"checksumSHA1": "tUQ1pHvWxAcPFmveZtlmCR9H4TY=",
+			"path": "github.com/jinzhu/inflection",
+			"revision": "1c35d901db3da928c72a72d8458480cc9ade058f",
+			"revisionTime": "2017-01-02T12:52:26Z"
+		},
+		{
+			"checksumSHA1": "OO1fNNxZ2s3bHj6gEo2aQ6yFyp0=",
+			"path": "github.com/name5566/leaf/chanrpc",
+			"revision": "e216b1f9e49a37f398257e8831c539eaf5265006",
+			"revisionTime": "2017-01-10T07:09:59Z"
+		},
+		{
+			"checksumSHA1": "As7QD82xhjAwg4791Wg0pY7r0L4=",
+			"path": "github.com/name5566/leaf/conf",
+			"revision": "e216b1f9e49a37f398257e8831c539eaf5265006",
+			"revisionTime": "2017-01-10T07:09:59Z"
+		},
+		{
+			"checksumSHA1": "hDDoUmN8rbcixW2MYmRuN/HDffk=",
+			"path": "github.com/name5566/leaf/log",
+			"revision": "e216b1f9e49a37f398257e8831c539eaf5265006",
+			"revisionTime": "2017-01-10T07:09:59Z"
+		},
+		{
+			"checksumSHA1": "84Paw7jhJNd9NwCvWASQ4Y9+ZaA=",
+			"path": "github.com/robfig/cron",
+			"revision": "df38d32658d8788cd446ba74db4bb5375c4b0cb3",
+			"revisionTime": "2017-03-09T13:24:18Z"
+		},
+		{
+			"checksumSHA1": "RZm4mPJl2SmfKhtWu17Jf6Wk/eI=",
+			"path": "github.com/rs/xid",
+			"revision": "7103a466901a3718bf6e97b5914397a7ba6da651",
+			"revisionTime": "2017-04-21T13:49:16Z"
+		}
+	],
+	"rootPath": "PZ_GameServer"
+}

@@ -1,0 +1,31 @@
+# PZ_GameServer document
+
+## 系统描述
+   * 系统连接采用websocket长链接，数据传输格式采用protobuf(目前使用proto3)
+   * 数据库采用mysql,数据库orm采用gorm文档链接地址 http://jinzhu.me/gorm/
+
+## 主要功能
+   * 游戏主逻辑(校验, 发牌, 打牌, 胡牌,  吃碰杠听胡)
+   * 开房间(房间号)
+   * 自动匹配
+   * 基础AI
+   * 玩家信息查看
+   * 结算
+
+## 连接
+   * CenterServer
+   * DBServer
+   * GateServer
+
+## 目录结构
+   * app      main函数
+   * server   游戏逻辑
+   * model    数据库表结构(数据库操作)
+   * log      日志
+   * config   配置文件
+   * protocol 协议(pb和自定义结构,常量)
+   * net      系统结构相关
+   * common   公共包和函数
+   * sdk      第三方对接目录
+   * redisdb  redis操作目录
+   * vendor   引用的第三方包存放,维护工具是govendor,文档工具地址(https://github.com/kardianos/govendor)
