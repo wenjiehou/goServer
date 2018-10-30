@@ -874,7 +874,10 @@ func (r *RoomNingBo) Sddz_Total() {
 						seat.User.Coin = rb.Jiuji_coin
 						seat.User.SendMessage(mjgame.MsgID_MSG_ACK_Error, error.ErrBuchongCoin)
 					}
-					model.GetUserModel().Save(seat.User.User)
+					if seat.User.IsRobot != 1 {
+						model.GetUserModel().Save(seat.User.User)
+					}
+
 					perCal.TotalScore = int32(seat.User.Coin)
 				} else {
 					perCal.TotalScore = seat.Accumulation.Score + perCal.Score
@@ -918,7 +921,9 @@ func (r *RoomNingBo) Sddz_Total() {
 						seat.User.Coin = rb.Jiuji_coin
 						seat.User.SendMessage(mjgame.MsgID_MSG_ACK_Error, error.ErrBuchongCoin)
 					}
-					model.GetUserModel().Save(seat.User.User)
+					if seat.User.IsRobot != 1 {
+						model.GetUserModel().Save(seat.User.User)
+					}
 					perCal.TotalScore = int32(seat.User.Coin)
 				} else {
 					perCal.TotalScore = seat.Accumulation.Score + perCal.Score
@@ -944,7 +949,9 @@ func (r *RoomNingBo) Sddz_Total() {
 			r.Seats[r.DizhuPos].User.Coin = rb.Jiuji_coin
 			r.Seats[r.DizhuPos].User.SendMessage(mjgame.MsgID_MSG_ACK_Error, error.ErrBuchongCoin)
 		}
-		model.GetUserModel().Save(r.Seats[r.DizhuPos].User.User)
+		if r.Seats[r.DizhuPos].User.IsRobot != 1 {
+			model.GetUserModel().Save(r.Seats[r.DizhuPos].User.User)
+		}
 		list[r.DizhuPos].TotalScore = int32(r.Seats[r.DizhuPos].User.Coin)
 	} else {
 		list[r.DizhuPos].TotalScore = r.Seats[r.DizhuPos].Accumulation.Score + list[r.DizhuPos].Score

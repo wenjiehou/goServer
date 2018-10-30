@@ -10,6 +10,9 @@ import (
 
 //记录钻石操作
 func AddDiamondLog(user *user.User, typ int, diamond int) {
+	if user.IsRobot == 1 {
+		return
+	}
 
 	fmt.Println("AddDiamondLog :::", diamond)
 

@@ -4,7 +4,7 @@
 	"LogLevel": "debug",
 	"LogPath": "log/",
 	"LogOutput" : true,
-	"WSAddr": "192.168.188.205:8081",
+	"WSAddr": "192.168.188.229:8081",
 	"MaxConnNum": 20000,
 	"MaxRoomNum": 500,
 	"LenStackBuf": 10240,
@@ -37,7 +37,7 @@
 		"Charset" : "utf8mb4"
 	},
 	"GMHttp":{
-		"Ip":"192.168.188.205", 
+		"Ip":"192.168.188.229", 
 		"Port":5564
 	}
 }

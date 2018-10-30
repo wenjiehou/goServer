@@ -54,12 +54,21 @@ func get_GroupData(paixing *PockPaixing) *CardGroupData {
 		} else if paixing.Feiji.Type == FEIJI_DUI { //三带二连
 			groupData.Value = (groupData.MaxCard - 3 + 1) / 2
 		}
-	case PAIXING_SANYI: //三带一
+	case PAIXING_SANYI: //三带一 屁股问题在最佳组合的地方处理过了
 		groupData.MaxCard = paixing.Jishu.ThreeArr[0]
-		groupData.Value = groupData.MaxCard - 10
+		if groupData.MaxCard >= 12 {
+			groupData.Value = 2 * (groupData.MaxCard - 10)
+		} else {
+			groupData.Value = groupData.MaxCard - 10
+		}
+
 	case PAIXING_SANER: //三带二
 		groupData.MaxCard = paixing.Jishu.ThreeArr[0]
-		groupData.Value = groupData.MaxCard - 10
+		if groupData.MaxCard >= 12 {
+			groupData.Value = 2 * (groupData.MaxCard - 10)
+		} else {
+			groupData.Value = groupData.MaxCard - 10
+		}
 	case PAIXING_SIDAIER: //四带二
 		groupData.MaxCard = paixing.Jishu.FourArr[0]
 		if paixing.Sier.Type == SIDAIER_DAN { //四带两单

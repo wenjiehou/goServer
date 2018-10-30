@@ -261,11 +261,11 @@ func (r *RoomNingBo) TimeTicker() {
 							var retArr []int
 
 							if r.CurIndex == r.DizhuPos {
-								retArr = px.FreeDizhuOutput(r.GetIntArray(r.Seats[r.CurIndex].Cards.List), len(preArr), len(nexArr), others, preStep, nexStep)
+								retArr = px.FreeDizhuOutput(r.GetIntArray(r.Seats[r.CurIndex].Cards.List), preArr, nexArr, others, preStep, nexStep)
 							} else if r.CurIndex == (r.DizhuPos+r.Rules.SeatLen-1)%r.Rules.SeatLen {
-								retArr = px.FreeDizhuSOutput(r.GetIntArray(r.Seats[r.CurIndex].Cards.List), len(preArr), len(nexArr), others, preStep, nexStep)
+								retArr = px.FreeDizhuSOutput(r.GetIntArray(r.Seats[r.CurIndex].Cards.List), preArr, nexArr, others, preStep, nexStep)
 							} else {
-								retArr = px.FreeDizhuXOutput(r.GetIntArray(r.Seats[r.CurIndex].Cards.List), len(preArr), len(nexArr), others, preStep, nexStep)
+								retArr = px.FreeDizhuXOutput(r.GetIntArray(r.Seats[r.CurIndex].Cards.List), preArr, nexArr, others, preStep, nexStep)
 							}
 
 							//							retArr := px.GetBigthan(r.GetIntArray(r.Seats[r.CurIndex].Cards.List), []int{})

@@ -12,8 +12,11 @@ const (
 )
 
 //自己出的，随便出
-func FreeDizhuOutput(self []int, preNum int, nexNum int, other []int,
+func FreeDizhuOutput(self []int, preCards []int, nexCards []int, other []int,
 	preStep [][]int, nexStep [][]int) []int {
+
+	//	preNum := len(preCards)
+	//	nexNum := len(nexCards)
 
 	_, retList := getBestList(self)
 	fmt.Println("retList::", retList)
@@ -52,13 +55,16 @@ func FreeDizhuOutput(self []int, preNum int, nexNum int, other []int,
 				putPaixing = bigestPaixing
 			} else {
 				//这里其实很讲究滴，很有策略
+				if GetPaixing(otherBigCards).Paixing == PAIXING_ZHADAN { //比我大的只有炸弹，这个时候
+					putPaixing = bigestPaixing
+				}
 
 			}
 		} else if len(retList) == 3 { //
 			//尽量出一手自己要的回来的
 			if lowestPaixing.Paixing == PAIXING_SANER && bigestPaixing.Paixing == PAIXING_SANYI {
 				//交换一下屁股出 3+1
-				putPaixing = GetPaixing([]int{lowestPaixing.Cards[0], lowestPaixing.Cards[1], lowestPaixing.Cards[2], bigestPaixing.Cards[3]})
+				putPaixing = lowestPaixing
 			} else { //如果有顺子先跑顺子，因为这玩意不跑估计没啥机会跑了
 				var threeTempp *PockPaixing
 
@@ -77,7 +83,6 @@ func FreeDizhuOutput(self []int, preNum int, nexNum int, other []int,
 				if threeTempp != nil {
 					putPaixing = threeTempp
 				}
-
 			}
 		}
 
@@ -91,23 +96,25 @@ func FreeDizhuOutput(self []int, preNum int, nexNum int, other []int,
 }
 
 //自己出的，随便出 地主的上家
-func FreeDizhuSOutput(self []int, preNum int, nexNum int, other []int,
+func FreeDizhuSOutput(self []int, preCards []int, nexCards []int, other []int,
 	preStep [][]int, nexStep [][]int) []int {
+
+	//	preNum := len(preCards)
+	nexNum := len(nexCards)
+
 	_, retList := getBestList(self)
 	lowest := 100
 	bigest := -100
 	var lowestPaixing *PockPaixing
-	var bigestPaixing *PockPaixing
+	//var bigestPaixing *PockPaixing
 
 	var putPaixing *PockPaixing
-
 	paixingList := []*PockPaixing{}
 
 	if len(retList) > 0 {
 		if len(retList) == 1 { //就一手牌，直接出了
 			return retList[0]
 		}
-
 		//这个是最优组合了，那我肯定要出里面价值最低的牌，后期可以认为同一种牌型比较多，而且其中的最小的价值又很低，出这个牌应该是一个不错的选择
 		for i := 0; i < len(retList); i++ {
 			tmpp := GetPaixing(retList[i])
@@ -116,159 +123,210 @@ func FreeDizhuSOutput(self []int, preNum int, nexNum int, other []int,
 				lowestPaixing = tmpp
 				lowest = tmpg.Value
 			}
+
 			if tmpg.Value > bigest {
-				bigestPaixing = tmpp
 				bigest = tmpg.Value
 			}
 
 			paixingList = append(paixingList, tmpp)
 		}
 
-		if len(retList) == 2 {
-			otherBigCards := GetBigthan(other, bigestPaixing.Cards)
-			if len(otherBigCards) == 0 {
-				putPaixing = bigestPaixing
+		nexBigList := []*PockPaixing{}   //地主能大过的牌
+		nexNoBigList := []*PockPaixing{} //地主不能大过的牌
+
+		for i := 0; i < len(paixingList); i++ {
+			if len(GetBigthan(nexCards, paixingList[i].Cards)) == 0 {
+				nexNoBigList = append(nexNoBigList, paixingList[i])
 			} else {
-				if len(lowestPaixing.Cards) != nexNum {
-					putPaixing = lowestPaixing
-				} else {
-					if nexNum != 1 && nexNum != 2 {
-						putPaixing = lowestPaixing
+				nexBigList = append(nexBigList, paixingList[i])
+			}
+		}
+
+		if len(nexBigList) == 0 { //地主都大不过，随便出
+			putPaixing = lowestPaixing
+		} else if len(nexBigList) == 1 { //地主能大过的只有一手牌，直接跑就好了
+			if len(nexNoBigList) > 0 {
+				putPaixing = nexNoBigList[0] //出地主要不到的
+			} else {
+				putPaixing = nexBigList[0]
+			}
+		} else if len(nexBigList) == 2 { //地主能大过的有两手
+			if len(nexNoBigList) >= 1 { //我有一手地主要不到，最好出一个一样的牌型
+				for _, p := range nexBigList {
+					if putPaixing != nil { //找到了就出来
+						break
+					}
+					for _, np := range nexNoBigList {
+						if np.Paixing == p.Paixing {
+							if len(GetBigthan(nexCards, p.Cards)) != nexNum { //地主不能一手牌就跑掉了
+								putPaixing = p
+								break
+							}
+						}
 					}
 				}
-
 			}
 		}
 
 		if putPaixing == nil {
-			var dizhuNum = nexNum
-
-			if dizhuNum == 1 {
-				//地主剩一张，我是他的上家，尽量不要出一张，
-				for _, v := range paixingList {
-					if v.Paixing != PAIXING_DAN {
-						putPaixing = v
-						break
+			//最好出一手价值很低，地主要不到的，但是盟友可以要得到的（注意价值不能太高，不然的话，大牌都出掉了，玩个屁）
+			if len(nexNoBigList) > 0 { //有地主大不过的，取最小价值的
+				var lower *PockPaixing
+				for _, v := range nexNoBigList {
+					if len(GetBigthan(preCards, v.Cards)) > 0 {
+						if lower == nil {
+							lower = v
+						} else {
+							if get_GroupData(v).Value < get_GroupData(lower).Value {
+								lower = v
+							}
+						}
 					}
 				}
-				if putPaixing == nil { //尽量出一张大的牌顶一下
-					putPaixing = bigestPaixing //出大的
+				if lower != nil { //如果这里的价值特别高，需要考虑一下
+					//这个地方因为盟友可以接过去，我们后面来考虑 ，todo
+					putPaixing = lower
 				}
-			} else if dizhuNum == 2 { //地主还剩两张
-				for _, v := range paixingList {
-					if v.Paixing != PAIXING_DUIZI {
-						if v.Paixing == PAIXING_DAN { //单张不能出的太小
-							if v.Jishu.OneArr[0] >= 12 {
-								putPaixing = v
-								break
-							}
+			}
+
+		}
+
+		if putPaixing != nil {
+			//反正一定不能让地主走了
+			if putPaixing == nil {
+				if len(nexNoBigList) > 0 { //有地主大不过的，取最小价值的
+					var lower *PockPaixing
+					for _, v := range nexNoBigList {
+						if lower == nil {
+							lower = v
 						} else {
-							putPaixing = v
-							break
+							if get_GroupData(v).Value < get_GroupData(lower).Value {
+								lower = v
+							}
+						}
+					}
+					if lower != nil { //如果这里的价值特别高，需要考虑一下
+						//这里怎么说呢，如果是炸弹啊，对王啊这种，或者小王啊，大王啊，肯定不能出
+						if lower.Paixing != PAIXING_ZHADAN && lower.Paixing != PAIXING_DUIWANG { //炸弹和对王出了没有意义，反正走不掉了
+							if get_GroupData(lower).Value <= 1 {
+								putPaixing = lower
+							}
 						}
 
 					}
-				}
-				//考虑到不能出最小的
-				if putPaixing == nil { //尽量出一张大的牌顶一下
-					putPaixing = bigestPaixing //出大的
-				}
-			} else if dizhuNum == 3 {
-				for _, v := range paixingList {
-					if v.Paixing != PAIXING_SAN {
-						if v.Paixing == PAIXING_DAN { //单张不能出的太小
-							if v.Jishu.OneArr[0] >= 12 {
-								putPaixing = v
-								break
-							}
-						} else {
-							putPaixing = v
-							break
-						}
-
-					}
-				}
-				//考虑到不能出最小的
-				if putPaixing == nil { //尽量出一张大的牌顶一下
-					putPaixing = bigestPaixing //出大的
-				}
-			} else if dizhuNum == 4 {
-				for _, v := range paixingList {
-					if v.Paixing != PAIXING_SANYI {
-						if v.Paixing == PAIXING_DAN { //单张不能出的太小
-							if v.Jishu.OneArr[0] >= 12 {
-								putPaixing = v
-								break
-							}
-						} else {
-							putPaixing = v
-							break
-						}
-
-					}
-				}
-				//考虑到不能出最小的
-				if putPaixing == nil { //尽量出一张大的牌顶一下
-					putPaixing = bigestPaixing //出大的
-				}
-			} else if dizhuNum == 5 {
-				for _, v := range paixingList {
-					if v.Paixing != PAIXING_SANER {
-						if v.Paixing == PAIXING_DAN { //单张不能出的太小
-							if v.Jishu.OneArr[0] >= 12 {
-								putPaixing = v
-								break
-							}
-						} else {
-							putPaixing = v
-							break
-						}
-
-					}
-				}
-				//考虑到不能出最小的
-				if putPaixing == nil { //尽量出一张大的牌顶一下
-					putPaixing = bigestPaixing //出大的
 				}
 			}
 		}
 
-		if putPaixing == nil { //我要顶门的，这个再考虑
+		if putPaixing != nil {
+			//出一个地主要得到，但是盟友要得到地主的牌，意思是盟友能接走
+			for _, p := range nexBigList {
+				nexBigCards := GetBigthan(nexCards, p.Cards)
+				if len(nexBigCards) >= 0 {
+					if len(nexBigCards) != nexNum && len(GetBigthan(preCards, nexBigCards)) > 0 { //盟友可以接过去
+						if p.Paixing == PAIXING_DAN {
+							if p.Jishu.OneArr[0] >= 12 {
+								putPaixing = p
+							}
+						} else {
+							putPaixing = p
+						}
+
+					}
+				}
+			}
+		}
+
+		if putPaixing == nil { //地主能接过去，盟友接不过去了，看看自己能不能接过来
+			for _, p := range nexBigList {
+				nexBigCards := GetBigthan(nexCards, p.Cards)
+				if len(nexBigCards) >= 0 {
+					if len(nexBigCards) != nexNum && len(GetBigthan(self, nexBigCards)) > 0 { //自己可以接过来
+						if p.Paixing == PAIXING_DAN {
+							if p.Jishu.OneArr[0] >= 12 {
+								putPaixing = p
+							}
+						} else {
+							putPaixing = p
+
+						}
+					}
+				}
+			}
+		}
+
+		//上面表示对家接不上了，常规的，我们出一个不是单张类型最小的牌
+		if putPaixing == nil {
+			var lower *PockPaixing
+			for _, p := range paixingList {
+				if len(GetBigthan(nexCards, p.Cards)) != nexNum {
+					if p.Paixing != PAIXING_DAN {
+						if lower == nil {
+							lower = p
+						} else {
+							if get_GroupData(p).Value < get_GroupData(lower).Value {
+								lower = p
+							}
+						}
+					}
+				}
+
+			}
+			if lower != nil {
+				putPaixing = lower
+			}
+		}
+
+		//这里需要考虑一种情况，我出了一个大牌，没人要得着，然后剩了一对小牌的情况
+
+		if putPaixing == nil { //地主都能大过，我就出最小的
+			for i := 11; i >= 2; i-- {
+				retCard := GetBigthan(self, []int{i})
+				if len(retCard) > 0 {
+					return retCard
+				}
+			}
+		}
+
+		if putPaixing == nil {
 			putPaixing = lowestPaixing
-			if putPaixing.Paixing == PAIXING_DAN {
-				for _, v := range paixingList {
-					if v.Paixing == PAIXING_DAN {
-						if v.Jishu.OneArr[0] >= 12 {
-							putPaixing = v
-							break
-						}
-					} else {
-						if get_GroupData(v).Value <= 12 {
-							putPaixing = v
-						}
-						break
-					}
-				}
-
-				if putPaixing == nil { //常规取
-					tempout := GetBigthan(self, []int{12})
-					if len(tempout) > 0 {
-						return tempout
-					}
-				}
-
-			}
-
 		}
 
-		return freeDeal(putPaixing, paixingList)
+		if putPaixing.Paixing == PAIXING_SANYI {
+			for _, v := range paixingList {
+				if v.Paixing == PAIXING_DAN {
+					if v.Jishu.OneArr[0] < putPaixing.Jishu.OneArr[0] {
+						putPaixing.Jishu.OneArr = v.Jishu.OneArr
+						putPaixing.Cards[3] = v.Cards[0]
+					}
+				}
+			}
+		} else if putPaixing.Paixing == PAIXING_SANER {
+			for _, v := range paixingList {
+				if v.Paixing == PAIXING_DUIZI {
+					if v.Jishu.TwoArr[0] < putPaixing.Jishu.TwoArr[0] {
+						putPaixing.Jishu.TwoArr = v.Jishu.TwoArr
+						putPaixing.Cards[3] = v.Cards[0]
+						putPaixing.Cards[4] = v.Cards[1]
+					}
+				}
+			}
+		}
+
+		return putPaixing.Cards
+
+		//return freeDeal(putPaixing, paixingList)
 	}
 	return []int{}
 }
 
 //自己出的，随便出 地主的下家
-func FreeDizhuXOutput(self []int, preNum int, nexNum int, other []int,
+func FreeDizhuXOutput(self []int, preCards []int, nexCards []int, other []int,
 	preStep [][]int, nexStep [][]int) []int {
+
+	//	preNum := len(preCards)
+	//	nexNum := len(nexCards)
+
 	_, retList := getBestList(self)
 	fmt.Println("retList::", retList)
 	lowest := 100
@@ -295,53 +353,113 @@ func FreeDizhuXOutput(self []int, preNum int, nexNum int, other []int,
 			if tmpg.Value > bigest {
 				bigestPaixing = tmpp
 				bigest = tmpg.Value
+
 			}
 
 			paixingList = append(paixingList, tmpp)
 		}
 
-		if len(retList) == 2 {
-			otherBigCards := GetBigthan(other, bigestPaixing.Cards)
-			if len(otherBigCards) == 0 {
-				putPaixing = bigestPaixing
+		//下面这一部分是帮助盟友出牌
+		_, nexList := getBestList(nexCards)
+		if len(nexList) == 1 { //妈的只有一手了，我要尽量满足他
+			nexPaixing := GetPaixing(nexList[0])
+			selfp := GetPaixing(self)
+			if nexPaixing.Paixing == PAIXING_DAN {
+				for _, c := range self {
+					if GetPockValue(c) < nexPaixing.Jishu.OneArr[0] {
+						return []int{c}
+					}
+				}
+			} else if nexPaixing.Paixing == PAIXING_DUIZI {
+				for i := nexPaixing.Jishu.TwoArr[0] + 1; i <= 16; i++ {
+					if i == 17 {
+						continue
+					}
+					if IndexOf(selfp.Jishu.TwoArr, i) != -1 || IndexOf(selfp.Jishu.ThreeArr, i) != -1 || IndexOf(selfp.Jishu.FourArr, i) != -1 {
+						return getCardsFromValues(self, []int{i, i})
+					}
+				}
+			} else if nexPaixing.Paixing == PAIXING_SAN { //三个
+				for i := nexPaixing.Jishu.ThreeArr[0] + 1; i <= 16; i++ {
+					if i == 17 {
+						continue
+					}
+					if IndexOf(selfp.Jishu.ThreeArr, i) != -1 || IndexOf(selfp.Jishu.FourArr, i) != -1 {
+						return getCardsFromValues(self, []int{i, i, i})
+					}
+				}
+			} else if nexPaixing.Paixing == PAIXING_SANYI {
+				for i := nexPaixing.Jishu.ThreeArr[0] + 1; i <= 16; i++ {
+					if i == 17 {
+						continue
+					}
+					if IndexOf(selfp.Jishu.ThreeArr, i) != -1 || IndexOf(selfp.Jishu.FourArr, i) != -1 {
+						tempCards := getCardsFromValues(self, []int{i, i, i})
+						tempSelf := copyNumEle(self, 1)
+						tempSelf = deleEleFromArr(tempSelf, tempCards)
+						if len(tempSelf) > 0 {
+							return append(tempCards, tempSelf[0])
+						}
+					}
+				}
+			} else if nexPaixing.Paixing == PAIXING_SANER {
+				for i := nexPaixing.Jishu.ThreeArr[0] + 1; i <= 16; i++ {
+					if i == 17 {
+						continue
+					}
+					if IndexOf(selfp.Jishu.ThreeArr, i) != -1 || IndexOf(selfp.Jishu.FourArr, i) != -1 {
+						tempCards := getCardsFromValues(self, []int{i, i, i})
+						tempSelf := copyNumEle(self, 1)
+						tempSelf = deleEleFromArr(tempSelf, tempCards)
+						tempSelfj := GetJishuArrData(tempSelf)
+
+						if len(tempSelfj.TwoArr) > 0 {
+							return append(tempCards, getCardsFromValues(tempSelf, []int{tempSelfj.TwoArr[0], tempSelfj.TwoArr[0]})...)
+						}
+
+						if len(tempSelfj.ThreeArr) > 0 {
+							return append(tempCards, getCardsFromValues(tempSelf, []int{tempSelfj.ThreeArr[0], tempSelfj.ThreeArr[0]})...)
+						}
+
+						if len(tempSelfj.FourArr) > 0 {
+							return append(tempCards, getCardsFromValues(tempSelf, []int{tempSelfj.FourArr[0], tempSelfj.FourArr[0]})...)
+						}
+
+					}
+				}
+			} else if nexPaixing.Paixing == PAIXING_LIANDUI {
+
+			} else if nexPaixing.Paixing == PAIXING_FEIJI {
+
+			}
+
+		}
+
+		preBigList := []*PockPaixing{}   //地主能大过的牌
+		preNoBigList := []*PockPaixing{} //地主不能大过的牌
+
+		for i := 0; i < len(paixingList); i++ {
+			if len(GetBigthan(preCards, paixingList[i].Cards)) == 0 {
+				preNoBigList = append(preNoBigList, paixingList[i])
 			} else {
-
-				var dizhuNum = preNum
-				//如果下家还有一张，我们拆一张最小的给他走
-				if dizhuNum == 1 {
-					danNum := 0
-					for _, v := range paixingList {
-						if v.Paixing == PAIXING_DAN {
-							danNum += 1
-						}
-					}
-					if danNum <= 1 { //最后出这个单牌就好了
-						for _, v := range paixingList {
-							if v.Paixing != PAIXING_DAN {
-								putPaixing = v
-							}
-						}
-					}
-
-					if putPaixing == nil {
-						if nexNum == 1 { //下家就一张牌咯
-							//如最小的这张牌小于等与6，可以考虑给下家走
-							sort.Sort(IntSlice(self))
-							if GetPockValue(self[0]) <= 6 {
-								return []int{self[0]}
-							}
-						}
-					}
-				}
-
-				if putPaixing == nil {
-
-				}
-
+				preBigList = append(preBigList, paixingList[i])
 			}
 		}
 
+		if len(preBigList) == 0 { //随便出
+			putPaixing = lowestPaixing
+		} else if len(preBigList) == 1 { //地主只能要的起一手，俺就把这手最后出
+			if len(preNoBigList) > 0 {
+				putPaixing = preNoBigList[0] //出地主要不到的
+			} else {
+				putPaixing = preBigList[0]
+			}
+		} else if len(preBigList) == 2 {
+
+		}
+
 		if putPaixing == nil { //前面没有取到就取小的
+			putPaixing = bigestPaixing
 			putPaixing = lowestPaixing
 		}
 
@@ -1567,7 +1685,7 @@ func DizhuSGen(self []int, preCards []int, nexCards []int, other []int, selfStep
 		return []int{551, 552}
 	}
 
-	//	preNum := len(preCards)
+	//	preNum := len(preCards)d
 	nexNum := len(nexCards) //地主的牌，哈哈哈，这个玩意其实有点作弊了，但是我觉得作弊不明显就好了
 
 	outp := GetPaixing(outCards)
@@ -1575,13 +1693,29 @@ func DizhuSGen(self []int, preCards []int, nexCards []int, other []int, selfStep
 	outg := get_GroupData(outp)
 	selfg := get_GroupData(selfp)
 
+	selfBigCards := GetBigthan(self, outCards)
+
+	if len(selfBigCards) == len(self) { //自己能跑的，赶紧跑
+		return self
+	}
 	//如果地主大不了这个牌，我就不要
 	if outIdx == -1 {
 		dizhuBiger := GetBigthan(nexCards, outCards) //地主要不起的牌，我肯定不要
+		dizhuBigerP := GetPaixing(dizhuBiger)
 		if len(dizhuBiger) == 0 {
+			if len(selfBigCards) > 0 { //我能要，如果我要了只剩一手，并且我要了，地主要不到，我肯定要
+				tempSelf := copyNumEle(self, 1)
+				tempSelf = deleEleFromArr(tempSelf, selfBigCards)
+
+				if GetPaixing(tempSelf).Paixing != PAIXING_NON { //我能跑，所以我跑了
+					return selfBigCards
+				}
+			}
+			return []int{}
+		} else if dizhuBigerP.Paixing == PAIXING_ZHADAN || dizhuBigerP.Paixing == PAIXING_DUIWANG {
 			return []int{}
 		}
-	}
+	} //这一段待完善
 
 	if outp.Paixing == PAIXING_NON {
 		return []int{}
@@ -1615,6 +1749,14 @@ func DizhuSGen(self []int, preCards []int, nexCards []int, other []int, selfStep
 				} else {
 					intentCard = 12
 				}
+			}
+
+		} else {
+			mustBig = true //地主出的一定要接
+			if nexNum == 1 {
+				intentCard = nexCards[0] //和地主剩余的一样大就好了
+			} else { //地主家不是一张
+				intentCard = 12
 			}
 
 		}
@@ -1657,31 +1799,14 @@ func DizhuSGen(self []int, preCards []int, nexCards []int, other []int, selfStep
 
 			}
 		}
+
 		if PutCards == true {
 			return BestMaxCards
-		}
-
-		//考虑拆单张来顶住
-		if mustBig == false { //不是一定要大过，这个时候，有限考虑14以下的
-			tempSelf := copyNumEle(self, 1)
-			for i := 0; i < len(tempSelf); i++ {
-				if GetPockValue(tempSelf[i]) > outg.MaxCard {
-					//除去这张牌并且求取临时价值
-					tempArr := copyNumEle(tempSelf, 1)
-					tempArr = deleEleFromArr(tempArr, []int{tempSelf[i]})
-
-					tempV := get_HandCardValue(tempArr, nil)
-					//选取总权值-轮次*7值最高的策略  因为我们认为剩余的手牌需要n次控手的机会才能出完，若轮次牌型很大（如炸弹） 则其-7的价值也会为正
-					if BestHandCardValue.SumValue-BestHandCardValue.NeedRound*7 <= tempV.SumValue-tempV.NeedRound*7 {
-						BestHandCardValue = tempV
-						BestMaxCards = []int{tempSelf[i]}
-						PutCards = true
-					}
-
-				}
-			}
-			if PutCards == true {
-				return BestMaxCards
+		} else {
+			//能跑就跑吧
+			tempRet := GetBigthan(self, outCards)
+			if len(tempRet) == 1 {
+				return tempRet
 			}
 		}
 
@@ -2462,7 +2587,7 @@ func DizhuSGen(self []int, preCards []int, nexCards []int, other []int, selfStep
 
 					tempValues := []int{}
 
-					for j := start_i; j < end_i; j++ {
+					for j := start_i; j <= end_i; j++ {
 						tempValues = append(tempValues, j, j, j)
 					}
 
@@ -2631,7 +2756,7 @@ func DizhuSGen(self []int, preCards []int, nexCards []int, other []int, selfStep
 
 					tempValues := []int{}
 
-					for j := start_i; j < end_i; j++ {
+					for j := start_i; j <= end_i; j++ {
 						tempValues = append(tempValues, j, j, j)
 					}
 
@@ -2944,13 +3069,7 @@ func DizhuXGen(self []int, preCards []int, nexCards []int, other []int, selfStep
 	preStep [][]int, nexStep [][]int, outIdx int, outCards []int) []int {
 
 	preNum := len(preCards)
-	nexNum := len(nexCards)
-
-	if outIdx == 1 { //盟友一张，地主不要，当然不能要咯
-		if nexNum == 1 {
-			return []int{}
-		}
-	}
+	//	nexNum := len(nexCards)
 
 	var retArr = make([]int, 0)
 
@@ -2964,6 +3083,38 @@ func DizhuXGen(self []int, preCards []int, nexCards []int, other []int, selfStep
 	selfg := get_GroupData(selfp)
 
 	otherp := GetPaixing(other)
+
+	if outIdx == 1 { //盟友一张，地主不要，当然不能要咯
+		//如果盟友只剩一手牌，就不要
+		_, nexList := getBestList(nexCards)
+		if len(nexList) == 1 { //盟友就剩一手了
+			return []int{}
+		} else if len(nexList) == 2 { //如果盟友剩两手牌，大的大于地主，也不要
+			for i := 0; i < len(nexList); i++ {
+				if len(GetBigthan(preCards, nexList[i])) == 0 {
+					return []int{}
+				}
+			}
+		} else { //如果下家只有一手牌地主可以要得起，我们也不要
+			preBigNexNum := 0
+			for i := 0; i < len(nexList); i++ {
+				if len(GetBigthan(preCards, nexList[i])) > 0 {
+					preBigNexNum += 1
+				}
+			}
+
+			if preBigNexNum <= 1 { //地主只有一手大过玩家的，不要
+				return []int{}
+			}
+		}
+
+	}
+
+	//如果我的下家能要得起，并且不是炸弹，我就不考虑炸弹了
+	var needZhadan bool = true
+	if len(GetBigthan(nexCards, outCards)) > 0 {
+		needZhadan = false
+	}
 
 	if outp.Paixing == PAIXING_NON {
 		return []int{}
@@ -3030,6 +3181,10 @@ func DizhuXGen(self []int, preCards []int, nexCards []int, other []int, selfStep
 		}
 
 		if outIdx == 1 {
+			return []int{}
+		}
+
+		if needZhadan == false {
 			return []int{}
 		}
 
@@ -3122,6 +3277,10 @@ func DizhuXGen(self []int, preCards []int, nexCards []int, other []int, selfStep
 			return []int{}
 		}
 
+		if needZhadan == false {
+			return []int{}
+		}
+
 		//考虑出炸弹
 		if len(selfp.Jishu.FourArr) > 0 {
 			for i := 0; i < len(selfp.Jishu.FourArr); i++ {
@@ -3205,6 +3364,10 @@ func DizhuXGen(self []int, preCards []int, nexCards []int, other []int, selfStep
 		}
 
 		if outIdx == 1 {
+			return []int{}
+		}
+
+		if needZhadan == false {
 			return []int{}
 		}
 
@@ -3305,6 +3468,10 @@ func DizhuXGen(self []int, preCards []int, nexCards []int, other []int, selfStep
 			return []int{}
 		}
 
+		if needZhadan == false {
+			return []int{}
+		}
+
 		//考虑出炸弹
 		if len(selfp.Jishu.FourArr) > 0 {
 			for i := 0; i < len(selfp.Jishu.FourArr); i++ {
@@ -3398,6 +3565,10 @@ func DizhuXGen(self []int, preCards []int, nexCards []int, other []int, selfStep
 		}
 
 		if outIdx == 1 {
+			return []int{}
+		}
+
+		if needZhadan == false {
 			return []int{}
 		}
 
@@ -3516,6 +3687,10 @@ func DizhuXGen(self []int, preCards []int, nexCards []int, other []int, selfStep
 			return []int{}
 		}
 
+		if needZhadan == false {
+			return []int{}
+		}
+
 		//考虑出炸弹
 		if len(selfp.Jishu.FourArr) > 0 {
 			for i := 0; i < len(selfp.Jishu.FourArr); i++ {
@@ -3630,6 +3805,11 @@ func DizhuXGen(self []int, preCards []int, nexCards []int, other []int, selfStep
 		if outIdx == 1 {
 			return []int{}
 		}
+
+		if needZhadan == false {
+			return []int{}
+		}
+
 		//考虑出炸弹
 		if len(selfp.Jishu.FourArr) > 0 {
 			for i := 0; i < len(selfp.Jishu.FourArr); i++ {
@@ -3745,6 +3925,10 @@ func DizhuXGen(self []int, preCards []int, nexCards []int, other []int, selfStep
 				return []int{}
 			}
 
+			if needZhadan == false {
+				return []int{}
+			}
+
 			//考虑出炸弹
 			if len(selfp.Jishu.FourArr) > 0 {
 				for i := 0; i < len(selfp.Jishu.FourArr); i++ {
@@ -3823,7 +4007,7 @@ func DizhuXGen(self []int, preCards []int, nexCards []int, other []int, selfStep
 
 					tempValues := []int{}
 
-					for j := start_i; j < end_i; j++ {
+					for j := start_i; j <= end_i; j++ {
 						tempValues = append(tempValues, j, j, j)
 					}
 
@@ -3918,6 +4102,10 @@ func DizhuXGen(self []int, preCards []int, nexCards []int, other []int, selfStep
 				return []int{}
 			}
 
+			if needZhadan == false {
+				return []int{}
+			}
+
 			//考虑出炸弹
 			if len(selfp.Jishu.FourArr) > 0 {
 				for i := 0; i < len(selfp.Jishu.FourArr); i++ {
@@ -3996,7 +4184,7 @@ func DizhuXGen(self []int, preCards []int, nexCards []int, other []int, selfStep
 
 					tempValues := []int{}
 
-					for j := start_i; j < end_i; j++ {
+					for j := start_i; j <= end_i; j++ {
 						tempValues = append(tempValues, j, j, j)
 					}
 
@@ -4071,6 +4259,10 @@ func DizhuXGen(self []int, preCards []int, nexCards []int, other []int, selfStep
 			}
 
 			if outIdx == 1 {
+				return []int{}
+			}
+
+			if needZhadan == false {
 				return []int{}
 			}
 
@@ -4179,6 +4371,10 @@ func DizhuXGen(self []int, preCards []int, nexCards []int, other []int, selfStep
 				return []int{}
 			}
 
+			if needZhadan == false {
+				return []int{}
+			}
+
 			//考虑出炸弹
 			if len(selfp.Jishu.FourArr) > 0 {
 				for i := 0; i < len(selfp.Jishu.FourArr); i++ {
@@ -4276,6 +4472,10 @@ func DizhuXGen(self []int, preCards []int, nexCards []int, other []int, selfStep
 			}
 
 			if outIdx == 1 {
+				return []int{}
+			}
+
+			if needZhadan == false {
 				return []int{}
 			}
 
